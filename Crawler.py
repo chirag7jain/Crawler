@@ -6,6 +6,8 @@
 import sys
 import gc
 import signal
+import logging
+from datetime import datetime
 
 #3rd Party Libraries
 import requests
@@ -42,8 +44,8 @@ def GetTag(html,tag='a'):
 		parsedHtml = BeautifulSoup(html)
 		VALUES = parsedHtml.findAll(tag)
 		return VALUES
-	except:
-		print 'Error In Content'
+	except Exception as e:
+		logging.error('Date - %s Exception - %s /n Content - %s /n Content %s',datetime.now(),e,type(html),html)
 		return None
 
 def GetProperLinks(tag,currentUrl,option='href'):
@@ -113,6 +115,14 @@ def CheckUrl(URL,baseurl):
 		URL = 'http://' + URL
 	return URL
 
+def View(repo):
+	#Displaying Crawled URLS
+	count = 1
+	print 'SRNO.\tURL\t\t\t\t'
+	for elem in repo:
+		print "%d.\t%s\t\t\t\t%s"%(count,elem[0],RequestIssue(elem[1]))
+		count += 1
+
 class Crawle:
 	def __init__(self,values):
 		#Setting Options Values
@@ -130,11 +140,11 @@ class Crawle:
 	
 	def GettingResponse(self,URL):
 		#Trying To Get URL Content
-		response = GetPage(URL)
-		if response == -2:
-			response = GetPage(URL)
-		self.AddToRepo(URL,response)
-		return response
+		RESPONSE = GetPage(URL)
+		if RESPONSE == -2:
+			RESPONSE = GetPage(URL)
+		self.AddToRepo(URL,RESPONSE)
+		return RESPONSE
 	
 	def AddToRepo(self,URL,response):
 		#Adding Crawled URL To Repo
@@ -154,7 +164,7 @@ class Crawle:
 		elif len(self.repo)<=self.count-1:
 			return 1
 		else:
-			self.cleanup()
+			self.CleanUp()
 
 	def DoPage(self,html,currentUrl):
 		#Scan Page For Links
@@ -167,17 +177,9 @@ class Crawle:
 				if self.CheckList(link)==1:
 					self.StartCrawling(link)
 	
-	def View(self):
-		#Displaying Crawled URLS
-		count = 1
-		print 'SRNO.\tURL\t\t\t\t'
-		for elem in self.repo:
-			print "%d.\t%s\t\t\t\t%s"%(count,elem[0],RequestIssue(elem[1]))
-			count += 1
-	
-	def cleanup(self,signum=None,frame=None):
+	def CleanUp(self,signum=None,frame=None):
 		#Stops The Script
-		self.View()
+		View(self.repo)
 		sys.exit()
 
 if __name__ == '__main__':
@@ -199,12 +201,13 @@ if params.url != '':
 		
 		CrawleOb = Crawle(params)
 		
+		logging.basicConfig(format='%(levelname)s:%(message)s',filename='info.log',level=logging.ERROR)
+		
 		#Catching Kill/Stop Script Signals
-		signal.signal(signal.SIGINT, CrawleOb.cleanup)
-		signal.signal(signal.SIGTERM, CrawleOb.cleanup)
+		signal.signal(signal.SIGINT, CrawleOb.CleanUp)
+		signal.signal(signal.SIGTERM, CrawleOb.CleanUp)
 		
 		CrawleOb.StartCrawling()
-		CrawleOb.View()
 	
 	else:
 		print 'Please Check Your Input'
