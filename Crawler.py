@@ -1,12 +1,20 @@
-import sys
-import requests
-import BeautifulSoup
-import urlparse
-import signal
-from optparse import OptionParser
+# Assumptions
+# Web Page -- ContentType text/html
+# Links Contained In --- Anchor,Frame,IFrame Tags
 
-#Getting Requested Page
+#System Libraries
+import sys
+import gc
+import signal
+
+#3rd Party Libraries
+import requests
+from optparse import OptionParser
+from urlparse import urlparse
+from BeautifulSoup import BeautifulSoup
+
 def GetPage(url):
+	#Getting Requested Page
 	try:
 		REQ = requests.get(url, timeout = 2)
 		if REQ.status_code==200:
@@ -24,39 +32,38 @@ def GetPage(url):
 		return -3
 	except requests.RequestException:
 		return -4
-		
+	except:
+		return -6
 	return 0
 
 def GetTag(html,tag='a'):
 	#Getting Content Residing Under Given Tags
-	parsedHtml = BeautifulSoup.BeautifulSoup(html)
-	VALUES = parsedHtml.findAll(tag)
-	return VALUES
+	try:
+		parsedHtml = BeautifulSoup(html)
+		VALUES = parsedHtml.findAll(tag)
+		return VALUES
+	except:
+		print 'Error In Content'
+		return None
 
 def GetProperLinks(tag,currentUrl,option='href'):
 	#Extracting Links From Tags
 	LINKS = []
 	for link in tag:
 		href = link.get(option)
-		if href !=None:		
-			if not href.startswith('http'):
-				if not IsAbsUrl(href):
-					href.lstrip('/')
-					href = currentUrl + '/' + href
-				if not href.startswith('mailto:'):
-					LINKS.append(href)
-			LINKS.append(href)
+		if CheckLinkProtocol(href)==1:
+			LINKS.append(CheckUrl(href,currentUrl))
 	return LINKS
 
 def GetAllLinks(html,url):
 	#Merging Links List Fetched From Anchor,IFrame,Frame Tags
-	LinkTags = GetTag(html,'a')
-	hrefs = GetProperLinks(LinkTags,url,'href')
-	LinkTags = GetTag(html,'iframe')
-	isrcs = GetProperLinks(LinkTags,url,'src')
-	LinkTags = GetTag(html,'frame')
-	srcs = GetProperLinks(LinkTags,url,'src')
-	LINKS = hrefs + isrcs + srcs
+	tagLinkSource = [['a','href'],['iframe','src'],['frame','src']]
+	LINKS = []
+	for source in tagLinkSource:
+		LinkTags = GetTag(html,source[0])
+		if LinkTags != None:
+			hyperlinks = GetProperLinks(LinkTags,url,source[1])
+			LINKS += hyperlinks
 	return LINKS
 
 def LinkCall(internalUrl,hrefs):
@@ -68,10 +75,8 @@ def LinkCall(internalUrl,hrefs):
 			LINKS.append(internalLinks)
 	return LINKS
 
-def IsAbsUrl(url):
-	return bool(urlparse.urlparse(url).scheme)
-
 def RequestIssue(issue):
+	#Return Issue Type
 	if issue == -1:
 		return 'Network Issue'
 	elif issue == -2:
@@ -81,8 +86,32 @@ def RequestIssue(issue):
 	elif issue == -4:
 		return 'Something Weird'
 	elif issue == -5:
-		return 'Content Type'
+		return 'Bad Content Type'
+	elif issue == -6:
+		return 'Unknowm'
 	return 'Fetched'
+
+def CheckLinkProtocol(link):
+	#Checking For UnCrawalable Protocols
+	if link !=None:
+		protocols = ['ftp','file','gopher','hdl','imap','mailto','mms','news','nntp','prospero','rsync','rtsp','rtspu','sftp','shttp','sip','sips','snews','svn','svn+ssh','telnet','wais','#']
+		for protocol in protocols:
+			if link.startswith(protocol):
+				return 0
+		return 1
+	return 0
+
+def CheckUrl(URL,baseurl):
+	#Checking URL
+	#Converting Relative URL to Absolute URL
+	urlCheck = urlparse(URL)
+	if not (urlCheck.scheme).startswith('http'):
+		if urlCheck.netloc == '':
+			URL = URL.lstrip('/')
+			URL = baseurl.rstrip('/') + '/' + URL
+			return URL
+		URL = 'http://' + URL
+	return URL
 
 class Crawle:
 	def __init__(self,values):
@@ -99,32 +128,37 @@ class Crawle:
 				return 0
 		return 1
 	
+	def GettingResponse(self,URL):
+		#Trying To Get URL Content
+		response = GetPage(URL)
+		if response == -2:
+			response = GetPage(URL)
+		self.AddToRepo(URL,response)
+		return response
+	
+	def AddToRepo(self,URL,response):
+		#Adding Crawled URL To Repo
+		value = [URL,response]
+		self.repo.append(value)
+
 	def StartCrawling(self,nextUrl=None):
 		if nextUrl==None:
 			nextUrl = self.url
-		html = GetPage(nextUrl)
-		
-		if html == -2:
-			html = GetPage(nextUrl)
-		
-		value = [nextUrl,1]
-		if type(html)==type(1):
-			value[1] = html
-			self.repo.append(value)
-		else:
-			self.repo.append(value)
-			self.DoPage(html,nextUrl)
+		response = self.GettingResponse(nextUrl)
+		self.DoPage(response,nextUrl)
 
 	def Stop(self):
-		#Decides When To Stop
+		#Decides When To Stop Crawling
 		if self.count==-1:
 			return 1
 		elif len(self.repo)<=self.count-1:
 			return 1
 		else:
-			return 0
+			self.cleanup()
 
 	def DoPage(self,html,currentUrl):
+		#Scan Page For Links
+		#Start Crawling The Link
 		if self.Stop()==1:
 			links = GetAllLinks(html,self.url)
 			if self.ext == 1:
@@ -132,19 +166,17 @@ class Crawle:
 			for link in links:
 				if self.CheckList(link)==1:
 					self.StartCrawling(link)
-		else:
-			self.View()
-			sys.exit()
 	
 	def View(self):
-		#Displaying Crawled URL's
+		#Displaying Crawled URLS
 		count = 1
 		print 'SRNO.\tURL\t\t\t\t'
 		for elem in self.repo:
 			print "%d.\t%s\t\t\t\t%s"%(count,elem[0],RequestIssue(elem[1]))
 			count += 1
 	
-	def cleanup(*args):
+	def cleanup(self,signum=None,frame=None):
+		#Stops The Script
 		self.View()
 		sys.exit()
 
@@ -162,6 +194,8 @@ if params.url != '':
 			
 		if not params.url.startswith('http'):
 			params.url = 'http://' + params.url
+		
+		gc.enable()
 		
 		CrawleOb = Crawle(params)
 		
