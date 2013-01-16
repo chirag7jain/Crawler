@@ -7,6 +7,13 @@ from the repository just created, parses the links from this new content into
 the repository and continues this process for all links in the repository until
 stopped or after a given number of links are fetched. 
 
+Requirements
+1.Libraries
+	1.requests
+	2.optparse
+	3.urlparse
+	4.BeautifulSoup
+
 Version 0.01
 Fetches links for content-type : text/html
 Fetches links for only ANCHOR TAGS -- <A>
