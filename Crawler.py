@@ -155,16 +155,25 @@ if __name__ == '__main__':
     parser.add_option('-e', action='store', dest='ext',type='int', default=0)
     params, args = parser.parse_args(sys.argv)
 
+#Checking Value
 if params.url != '':
-	if not params.url.startswith('http'):
-		params.url = 'http://' + params.url
-	CrawleOb = Crawle(params)
-	CrawleOb.StartCrawling()
-	CrawleOb.View()
 	
-	#Catching Kill/Stop Script Signals
-	signal.signal(signal.SIGINT, CrawleOb.cleanup)
-	signal.signal(signal.SIGTERM, CrawleOb.cleanup)
+	if params.count >= -1 and params.count !=0 and params.ext>=0 and params.ext<2:
+			
+		if not params.url.startswith('http'):
+			params.url = 'http://' + params.url
+		
+		CrawleOb = Crawle(params)
+		
+		#Catching Kill/Stop Script Signals
+		signal.signal(signal.SIGINT, CrawleOb.cleanup)
+		signal.signal(signal.SIGTERM, CrawleOb.cleanup)
+		
+		CrawleOb.StartCrawling()
+		CrawleOb.View()
 	
+	else:
+		print 'Please Check Your Input'
+			
 else:
 	print 'No Input Given'
