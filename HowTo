@@ -1,0 +1,19 @@
+Crawler - HowTo
+
+Parameters
+Value	What		Value						Type				Example			Required
+-u	URL		Enter URL					String **Required		www.google.com		Yes
+-c	No Of Links	No Of Links To Be Crawled			Integer [Default Unlimited]	10			Optional
+-e	Crawling Mode	1 - Internal Crawling.	0 - External [Default]	Integer	[Default 0]		1			Optional
+
+Basic Usage
+
+python filename.py -u domainname
+
+Example Usages
+
+python filename.py -u www.google.com
+
+python filename.py -u www.google.com -c 10 -e 1
+
+python filename.py -u mysite.com -c 10 -e 0
