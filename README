@@ -1,4 +1,4 @@
-Crawler Version 0.02
+Crawler Version 0.03
 
 A crawler is a program that starts with a url on the web (ex: http://python.org),
 fetches the web-page corresponding to that url, and parses all the links on that
@@ -22,3 +22,7 @@ Version 0.02
 Added Support for fetching links from IFRAME & FRAME TAGS
 Improve Results Display
 Bug Fixes
+
+Version 0.03
+Bug Fixes & Enhancements
+Added Logging
