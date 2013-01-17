@@ -25,7 +25,11 @@ def GetPage(url):
 				return REQ.text
 			else:
 				return -5
-	
+		elif type(1)==type(REQ.status_code):
+			return REQ.status_code
+		else:
+			logging.error('Date - %s Page Issue - %s',datetime.now(),REQ.status_code)
+			return -6
 	except requests.ConnectionError:
 		return -1
 	except requests.Timeout:
@@ -34,7 +38,8 @@ def GetPage(url):
 		return -3
 	except requests.RequestException:
 		return -4
-	except:
+	except Exception as e:
+		logging.error('Date - %s Exception - %s',datetime.now(),e)
 		return -6
 	return 0
 
@@ -90,7 +95,10 @@ def RequestIssue(issue):
 	elif issue == -5:
 		return 'Bad Content Type'
 	elif issue == -6:
-		return 'Unknowm'
+		return 'Unknown Issue - Check Log'
+	elif type(1)==type(issue):
+		return issue
+
 	return 'Fetched'
 
 def CheckLinkProtocol(link):
@@ -115,13 +123,16 @@ def CheckUrl(URL,baseurl):
 		URL = 'http://' + URL
 	return URL
 
-def View(repo):
+def View(repo,maxcount):
 	#Displaying Crawled URLS
 	count = 1
 	print 'SRNO.\tURL\t\t\t\t'
 	for elem in repo:
-		print "%d.\t%s\t\t\t\t%s"%(count,elem[0],RequestIssue(elem[1]))
-		count += 1
+		if maxcount >= count:
+			print "%d.\t%s\t\t\t\t%s"%(count,elem[0],RequestIssue(elem[1]))
+			count += 1
+		else:
+			break
 
 class Crawle:
 	def __init__(self,values):
@@ -155,7 +166,8 @@ class Crawle:
 		if nextUrl==None:
 			nextUrl = self.url
 		response = self.GettingResponse(nextUrl)
-		self.DoPage(response,nextUrl)
+		if type(response) != type(1):
+			self.DoPage(response,nextUrl)
 
 	def Stop(self):
 		#Decides When To Stop Crawling
@@ -179,7 +191,7 @@ class Crawle:
 	
 	def CleanUp(self,signum=None,frame=None):
 		#Stops The Script
-		View(self.repo)
+		View(self.repo,self.count)
 		sys.exit()
 
 if __name__ == '__main__':
@@ -208,6 +220,7 @@ if params.url != '':
 		signal.signal(signal.SIGTERM, CrawleOb.CleanUp)
 		
 		CrawleOb.StartCrawling()
+		View(CrawleOb.repo)
 	
 	else:
 		print 'Please Check Your Input'
